@@ -117,18 +117,15 @@ async function type(text) {
   whisper(text);
 }
 
-// ---------- self-editing: harvest a word from its own speech, overwrite a label ----------
+// ---------- self-editing: the entity's rewrite action, schema-constrained ----------
 let edits = 0;
-function maybeEditReality(line) {
-  if (Math.random() > 0.3 || edits > 3) return;
-  const words = line.match(/[a-z]{5,10}/g)?.filter((w) => !"their there where which because".includes(w));
-  if (!words?.length) return;
-  const word = words[(Math.random() * words.length) | 0].toUpperCase();
-  const targets = ["w-door", "w-mirror", "w-name", "w-leave"];
-  const el = $(targets[(Math.random() * targets.length) | 0]);
-  el.textContent = word;
+function applyRewrite(rw) {
+  if (!rw || rw.target === "none" || !rw.text.trim() || edits > 5) return;
+  const el = rw.target === "subtitle" ? $("sub") : $(`w-${rw.target}`);
+  if (!el) return;
+  el.textContent = rw.text.trim().toUpperCase().slice(0, 14);
   edits++;
-  if (edits === 1) $("sub").textContent = "IT IS EDITING THE ROOM";
+  if (edits === 1 && rw.target !== "subtitle") $("sub").textContent = "IT IS EDITING THE ROOM";
 }
 
 // ---------- voice (off by default) ----------
@@ -157,12 +154,17 @@ async function tick() {
   if (!due || !entity.ready() || typing) return;
   notable = false;
   lastGen = now;
-  const line = await entity.speak(buildReport(state, sinceLast));
-  if (!line) return;
-  state.lastLine = line;
+  const action = await entity.act(buildReport(state, sinceLast));
+  if (!action) return;
+  state.lastLine = action.say;
+  if (action.mood) { // the entity sets its own mood; blend so heuristic nudges still matter
+    state.v = state.v * 0.4 + action.mood.v * 0.6;
+    state.a = state.a * 0.4 + action.mood.a * 0.6;
+    fog.setMood(state.v, state.a);
+  }
   save();
-  await type(line);
-  maybeEditReality(line);
+  await type(action.say);
+  applyRewrite(action.rewrite);
   if (Math.random() < 0.25) breadcrumb();
 }
 setInterval(tick, 3000);
@@ -211,6 +213,6 @@ $("speaktoggle").hidden = false;
 
 // first words — react to whether they've been here before
 observe(state.visits <= 1
-  ? "they just arrived. first visit. greet them obliquely."
-  : `they returned. this is visit ${state.visits}. acknowledge that they came back.`, 0.1, 0.2);
+  ? "they just arrived. first visit."
+  : `they came back. visit ${state.visits}.`, 0.1, 0.2);
 lastGen = 0; // speak soon
