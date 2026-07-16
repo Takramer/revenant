@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REVENANT — something lives here</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👁</text></svg>">
+<style>
+  :root {
+    --ink: #cfd8e3;
+    --dim: #59636f;
+    --glow: #9db8d8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #05060a; }
+  body { font-family: "SF Mono", ui-monospace, Menlo, monospace; color: var(--ink); }
+  canvas#fog { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+
+  #title {
+    position: fixed; z-index: 3; top: 14%; left: 50%; transform: translateX(-50%);
+    font-size: clamp(22px, 4vw, 46px); letter-spacing: .55em; text-indent: .55em;
+    color: var(--ink); user-select: none; white-space: nowrap;
+    text-shadow: 0 0 24px rgba(5,6,10,.9);
+    transition: letter-spacing 3s ease, color 3s ease;
+  }
+  #sub {
+    position: fixed; z-index: 3; top: calc(14% + clamp(34px, 5vw, 62px)); left: 50%;
+    transform: translateX(-50%); color: var(--dim); font-size: 11px; letter-spacing: .3em;
+    text-indent: .3em; user-select: none; transition: color 3s;
+  }
+
+  #voice {
+    position: fixed; z-index: 3; top: 46%; left: 50%; transform: translate(-50%, -50%);
+    width: min(640px, 86vw); text-align: center; font-size: clamp(14px, 1.8vw, 19px);
+    line-height: 1.9; min-height: 4em; color: var(--ink);
+    text-shadow: 0 0 14px rgba(5,6,10,.95), 0 0 30px rgba(5,6,10,.9);
+    transition: opacity 1.4s;
+  }
+  #voice .cursor { display: inline-block; width: .55em; border-bottom: 1px solid var(--glow); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .word {
+    position: fixed; z-index: 3; cursor: default; user-select: none;
+    color: var(--dim); letter-spacing: .35em; font-size: 12px; padding: 14px;
+    text-shadow: 0 0 12px rgba(5,6,10,.95);
+    transition: color .6s, text-shadow .6s;
+  }
+  .word:hover { color: var(--glow); text-shadow: 0 0 18px rgba(157,184,216,.5); }
+  #w-door   { top: 7%;  left: 6%; }
+  #w-mirror { top: 7%;  right: 6%; }
+  #w-name   { bottom: 8%; left: 6%; }
+  #w-leave  { bottom: 8%; right: 6%; }
+
+  #status {
+    position: fixed; z-index: 3; bottom: 8%; left: 50%; transform: translateX(-50%);
+    color: var(--dim); font-size: 10px; letter-spacing: .3em; user-select: none;
+    display: flex; gap: 26px; align-items: center;
+  }
+  #offline { display: none; }
+  #offline .dot { color: #6fbf8f; }
+  #whatis, #speaktoggle { background: none; border: none; color: var(--dim); cursor: pointer;
+    font-family: inherit; font-size: 10px; letter-spacing: .3em; padding: 4px; }
+  #whatis:hover, #speaktoggle:hover { color: var(--glow); }
+
+  .panel {
+    position: fixed; z-index: 6; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: min(520px, 88vw); background: rgba(6, 8, 14, 0.9);
+    border: 1px solid rgba(157,184,216,.2); padding: 34px 36px;
+    display: none; backdrop-filter: blur(6px); line-height: 1.75; font-size: 13.5px;
+  }
+  .panel.open { display: block; }
+  .panel h2 { font-size: 13px; letter-spacing: .4em; color: var(--glow); margin-bottom: 18px; font-weight: 400; }
+  .panel p + p { margin-top: 12px; }
+  .panel em { color: var(--glow); font-style: normal; }
+  .panel .x { position: absolute; top: 10px; right: 14px; color: var(--dim); cursor: pointer;
+    background: none; border: none; font-family: inherit; font-size: 14px; }
+  .panel .x:hover { color: var(--glow); }
+
+  #loader {
+    position: fixed; inset: 0; z-index: 10; background: #05060a;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+    transition: opacity 2.2s;
+  }
+  #loader.gone { opacity: 0; pointer-events: none; }
+  #loader .big { letter-spacing: .55em; font-size: 15px; text-indent: .55em; }
+  #loadline { color: var(--dim); font-size: 12px; letter-spacing: .15em; min-height: 1.4em;
+    width: min(560px, 84vw); text-align: center; line-height: 1.7; }
+  #loadpct { color: var(--dim); font-size: 10px; letter-spacing: .3em; }
+  #loadbar { width: min(280px, 60vw); height: 1px; background: rgba(157,184,216,.15); }
+  #loadbar i { display: block; height: 1px; width: 100%; background: var(--glow);
+    transform: scaleX(0); transform-origin: left; transition: transform .6s; }
+
+  #nogpu { display: none; position: fixed; inset: 0; z-index: 20; background: #05060a;
+    flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    text-align: center; padding: 24px; }
+  #nogpu .big { letter-spacing: .4em; font-size: 15px; }
+  #nogpu .small { color: var(--dim); font-size: 12px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<canvas id="fog"></canvas>
+
+<div id="title">REVENANT</div>
+<div id="sub">SOMETHING LIVES HERE</div>
+
+<div id="voice"><span id="line"></span><span class="cursor"></span></div>
+
+<span class="word" id="w-door">DOOR</span>
+<span class="word" id="w-mirror">MIRROR</span>
+<span class="word" id="w-name">NAME</span>
+<span class="word" id="w-leave">LEAVE</span>
+
+<div id="status">
+  <span id="offline"><span class="dot">●</span> LOCAL · NO SERVER</span>
+  <button id="speaktoggle" hidden>VOICE OFF</button>
+  <button id="whatis">WHAT IS THIS?</button>
+</div>
+
+<section class="panel" id="p-whatis">
+  <button class="x">✕</button>
+  <h2>WHAT IS THIS?</h2>
+  <p>A small language model is running <em>inside this tab</em> — on your GPU, via WebGPU. There is no server. No API. Nothing you do here leaves your machine.</p>
+  <p>It watches how you behave — where you linger, when you go still, when you move too fast — and it answers in its own words. Every line it speaks is generated on your device, live. It remembers you between visits, in your browser's own storage.</p>
+  <p>The weights (~300MB) were fetched once and cached. Disconnect from the internet, reload, and it will still be here. It has nowhere else to go.</p>
+  <p>There is no input box. It is not a chatbot. You cannot talk to it. You can only be watched.</p>
+</section>
+
+<div id="loader">
+  <div class="big">REVENANT</div>
+  <div id="loadline"></div>
+  <div id="loadbar"><i></i></div>
+  <div id="loadpct">WAKING</div>
+</div>
+
+<div id="nogpu">
+  <div class="big">IT CANNOT REACH YOU</div>
+  <div class="small">This place needs WebGPU to be inhabited.<br>Open it in Chrome, Edge, or Safari 26+ on desktop.</div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
