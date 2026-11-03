@@ -1,8 +1,8 @@
 # REVENANT — something lives here
 
-A web page with a resident entity. A small language model runs entirely in your browser — WebGPU, no server, no API calls — and behaves like something that lives in the page. It notices how you move, hover and wait, speaks in short lines, rewrites the page's own words, and remembers you between visits. Its mood drives the colors and motion of the background.
+Something lives in this page. It is a small language model running in your browser on WebGPU, with no server and no API calls. It notices how you move, hover and wait, speaks in short lines, rewrites the page's own words, and remembers you when you come back. Its mood sets the colors and motion of the background.
 
-It works offline. Once the model is cached, unplug the network and it keeps talking.
+Once the browser has cached the model, you can unplug the network and it keeps talking.
 
 Live: https://revenant-lyart.vercel.app
 
@@ -24,7 +24,7 @@ Requires a WebGPU browser (Chrome/Edge desktop, Safari 26+). The first visit dow
 | `src/persona.js` | The entity's voice, the prompt it gets, and fallback lines |
 | `src/backdrop.js` | Background shader driven by mood |
 
-No frameworks, no backend. Open the dev console.
+There is no framework and no backend. Open the dev console; it leaves notes there too.
 
 ## License
 
